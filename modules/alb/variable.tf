@@ -1,132 +1,115 @@
-variable "alb_name" {
-  description = "Name of the Application Load Balancer"
+variable "project_name" {
   type        = string
+  description = "Project name prefix"
+}
+
+variable "alb_name" {
+  type        = string
+  description = "Name of the load balancer"
+}
+
+variable "alb_internal" {
+  type        = bool
+  description = "Whether the ALB is internal"
+}
+
+variable "subnet_ids" {
+  type        = list(string)
+  description = "Public subnet IDs for ALB"
 }
 
 variable "vpc_id" {
-  description = "VPC ID where the ALB will be created"
   type        = string
+  description = "VPC ID for SG"
 }
 
-variable "public_subnet_ids" {
-  description = "List of public subnet IDs for ALB"
-  type        = list(string)
-}
-
-variable "internal" {
-  description = "Whether the ALB is internal"
-  type        = bool
-  default     = false
-}
-
-variable "enable_deletion_protection" {
-  description = "Enable deletion protection for ALB"
-  type        = bool
-  default     = true
-}
-
-variable "idle_timeout" {
-  description = "Idle timeout for ALB"
+variable "listener_port" {
   type        = number
-  default     = 60
+  default     = 80
+  description = "Listener port for ALB HTTP listener"
 }
 
-variable "ip_address_type" {
-  description = "IP address type (ipv4 or dualstack)"
+variable "listener_protocol" {
   type        = string
-  default     = "ipv4"
+  default     = "HTTP"
+  description = "Protocol for ALB listener"
+}
+
+variable "certificate_arn" {
+  type        = string
+  description = "ACM certificate ARN for HTTPS"
+  default     = null
 }
 
 variable "target_group_name" {
-  description = "Name of the target group"
   type        = string
+  description = "Name for target group"
 }
 
 variable "target_group_port" {
-  description = "Port for target group"
   type        = number
-  default     = 80
+  description = "Port for target group"
 }
 
 variable "target_group_protocol" {
-  description = "Protocol for target group"
   type        = string
-  default     = "HTTP"
+  description = "Protocol for target group (HTTP or HTTPS)"
 }
 
-variable "target_type" {
-  description = "Target type (instance, ip, lambda)"
-  type        = string
-  default     = "instance"
-}
-
-variable "health_check_path" {
-  description = "Health check path"
-  type        = string
-  default     = "/"
-}
-
-variable "health_check_interval" {
-  description = "Health check interval"
-  type        = number
-  default     = 30
-}
-
-variable "health_check_timeout" {
-  description = "Health check timeout"
-  type        = number
-  default     = 5
+variable "tags" {
+  type        = map(string)
+  description = "Tags"
 }
 
 variable "health_check_healthy_threshold" {
-  description = "Healthy threshold"
   type        = number
+  description = "Number of consecutive successful health checks before considering the target healthy"
   default     = 3
 }
 
 variable "health_check_unhealthy_threshold" {
-  description = "Unhealthy threshold"
   type        = number
+  description = "Number of consecutive failed health checks before considering the target unhealthy"
   default     = 3
 }
 
-variable "health_check_matcher" {
-  description = "HTTP codes for success"
-  type        = string
-  default     = "200-299"
-}
-
-variable "listener_port" {
-  description = "Listener port"
+variable "health_check_timeout" {
   type        = number
-  default     = 443
+  description = "Amount of time, in seconds, before the health check times out"
+  default     = 5
 }
 
-variable "listener_protocol" {
-  description = "Listener protocol"
+variable "health_check_interval" {
+  type        = number
+  description = "Time (in seconds) between health checks"
+  default     = 30
+}
+
+variable "health_check_path" {
   type        = string
-  default     = "HTTPS"
+  description = "The destination path for ALB health checks"
+  default     = "/"
+}
+
+variable "health_check_matcher" {
+  type        = string
+  description = "HTTP code matcher for the ALB health check"
+  default     = "200"
+}
+
+variable "security_group_ids" {
+  type        = list(string)
+  description = "List of security group IDs to attach to ALB. If empty, module will create a new SG."
+  default     = []
 }
 
 variable "ssl_policy" {
-  description = "SSL Policy for HTTPS listener"
+  description = "Security policy for HTTPS listener"
   type        = string
   default     = "ELBSecurityPolicy-2016-08"
 }
 
-variable "certificate_arn" {
-  description = "ARN of SSL certificate for HTTPS listener"
-  type        = string
-}
-
-variable "allowed_cidr_blocks" {
-  description = "CIDR blocks allowed to access the ALB"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
-variable "tags" {
-  description = "Tags to apply to all resources"
-  type        = map(string)
-  default     = {}
+variable "target_type" {
+  type    = string
+  default = "instance"   # ok but we override in root
 }

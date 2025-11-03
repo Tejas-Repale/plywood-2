@@ -14,11 +14,29 @@ output "alb_zone_id" {
 }
 
 output "target_group_arn" {
-  description = "ARN of the target group"
+  description = "ARN of the target group created by the ALB module"
   value       = aws_lb_target_group.this.arn
 }
 
-output "security_group_id" {
-  description = "Security group ID for ALB"
-  value       = aws_security_group.alb_sg.id
+output "https_listener_arn" {
+  description = "ARN of the ALB HTTPS listener"
+  value       = aws_lb_listener.http.arn
 }
+
+output "alb_listener_arn" {
+  value = aws_lb_listener.http.arn
+}
+
+output "alb_sg_id" {
+  value = (
+    length(var.security_group_ids) == 0
+    ? aws_security_group.alb_sg[0].id
+    : var.security_group_ids[0]
+  )
+}
+
+output "security_group_ids" {
+  description = "ALB Security Group IDs"
+  value = [for sg in aws_security_group.alb_sg : sg.id]
+}
+

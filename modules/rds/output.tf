@@ -22,3 +22,13 @@ output "rds_subnet_group" {
   description = "RDS subnet group name"
   value       = aws_db_subnet_group.this.name
 }
+
+output "db_port" {
+  description = "Database port"
+  value       = aws_db_instance.this.port
+}
+
+output "db_username" {
+  description = "Master username for RDS"
+  value       = aws_db_instance.this.username
+}

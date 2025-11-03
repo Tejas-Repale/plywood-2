@@ -104,7 +104,7 @@ resource "aws_db_instance" "this" {
   )
 
   lifecycle {
-    prevent_destroy = var.prevent_destroy
+    prevent_destroy = true
   }
 }
 

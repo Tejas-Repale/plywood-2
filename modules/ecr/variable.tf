@@ -44,3 +44,14 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+variable "project_name" {
+  type = string
+}
+
+variable "environment" {
+  type = string
+}
+
+variable "ecr_repo_name" {
+  type = string
+}

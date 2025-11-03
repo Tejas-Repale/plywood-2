@@ -45,7 +45,9 @@ resource "aws_wafv2_web_acl" "this" {
   rule {
     name     = "AWS-AWSManagedRulesCommonRuleSet"
     priority = 10
-    override_action { none {} }
+    override_action { 
+      none {} 
+      }
     statement {
       managed_rule_group_statement {
         vendor_name = "AWS"
@@ -62,7 +64,9 @@ resource "aws_wafv2_web_acl" "this" {
   rule {
     name     = "AWS-AWSManagedRulesKnownBadInputsRuleSet"
     priority = 20
-    override_action { none {} }
+    override_action { 
+      none {} 
+      }
     statement {
       managed_rule_group_statement {
         vendor_name = "AWS"
@@ -79,7 +83,9 @@ resource "aws_wafv2_web_acl" "this" {
   rule {
     name     = "AWS-AWSManagedRulesAmazonIpReputationList"
     priority = 30
-    override_action { none {} }
+    override_action { 
+      none {} 
+      }
     statement {
       managed_rule_group_statement {
         vendor_name = "AWS"
@@ -96,7 +102,9 @@ resource "aws_wafv2_web_acl" "this" {
   rule {
     name     = "AWS-AWSManagedRulesSQLiRuleSet"
     priority = 40
-    override_action { none {} }
+    override_action { 
+      none {} 
+      }
     statement {
       managed_rule_group_statement {
         vendor_name = "AWS"
@@ -142,8 +150,11 @@ resource "aws_wafv2_web_acl" "this" {
 # -------------------------------
 # WAF Web ACL Association (optional)
 # -------------------------------
+
+
 resource "aws_wafv2_web_acl_association" "alb_association" {
-  count       = var.associate_alb ? 1 : 0
-  resource_arn = var.resource_arn
+  count        = var.create_alb_association ? 1 : 0
+
+  resource_arn = var.alb_arn
   web_acl_arn  = aws_wafv2_web_acl.this.arn
 }

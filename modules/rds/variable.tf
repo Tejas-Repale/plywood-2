@@ -12,7 +12,7 @@ variable "engine" {
 variable "engine_version" {
   description = "Engine version for RDS"
   type        = string
-  default     = "8.0.36"
+  default     = "8.0.40"
 }
 
 variable "instance_class" {

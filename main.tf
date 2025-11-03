@@ -1,34 +1,11 @@
 ###########################################################
-# ROOT MAIN.TF — PRODUCTION READY & DE-HARDCODED
-# Includes modules: VPC, ALB, ECR, ECS, RDS, WAF, S3+CloudFront
-###########################################################
-
-terraform {
-  required_version = ">= 1.6.0"
-
-  backend "s3" {
-    bucket         = var.backend_bucket_name
-    key            = "${var.environment}/terraform.tfstate"
-    region         = var.region
-    dynamodb_table = var.backend_dynamodb_table
-    encrypt        = true
-  }
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
-###########################################################
 # PROVIDER CONFIGURATION
 ###########################################################
 
 provider "aws" {
-  region = var.region
+  region  = var.region
   profile = var.aws_profile
+
   default_tags {
     tags = {
       Environment = var.environment
@@ -40,51 +17,66 @@ provider "aws" {
 
 ###########################################################
 # MODULE: VPC
+# (expects variables: vpc_cidr, public_subnet_cidrs, private_subnet_cidrs, availability_zones, enable_nat_gateway)
 ###########################################################
 
 module "vpc" {
-  source               = "./modules/vpc"
-  project_name         = var.project_name
-  environment          = var.environment
-  region               = var.region
+  source = "./modules/vpc"
+
+  project_name = var.project_name
+  tags         = var.tags
+
   vpc_cidr             = var.vpc_cidr
   public_subnet_cidrs  = var.public_subnet_cidrs
   private_subnet_cidrs = var.private_subnet_cidrs
-  availability_zones   = var.availability_zones
+  azs                  = var.availability_zones
+
   enable_nat_gateway   = var.enable_nat_gateway
+  enable_dns_support   = var.enable_dns_support
+  enable_dns_hostnames = var.enable_dns_hostnames
 }
 
 ###########################################################
 # MODULE: ECR
+# (module expects either "repository_name" or "ecr_repo_name" — use ecr_repo_name here)
 ###########################################################
 
 module "ecr" {
-  source        = "./modules/ecr"
-  project_name  = var.project_name
-  environment   = var.environment
-  ecr_repo_name = "${var.project_name}-${var.environment}-repo"
-  scan_on_push  = true
+  source          = "./modules/ecr"
+  ecr_repo_name   = var.ecr_repo_name
+  project_name    = var.project_name
+  environment     = var.environment
+  scan_on_push    = true
+  repository_name = var.repository_name
 }
 
 ###########################################################
 # MODULE: ECS
+# (pass all variables module/ecs/variables.tf expects)
 ###########################################################
 
 module "ecs" {
-  source                    = "./modules/ecs"
-  project_name              = var.project_name
-  environment               = var.environment
-  cluster_name              = "${var.project_name}-${var.environment}-cluster"
-  ecs_desired_count         = var.ecs_desired_count
-  ecs_task_cpu              = var.ecs_task_cpu
-  ecs_task_memory           = var.ecs_task_memory
-  container_image           = module.ecr.repository_url
-  container_port            = var.container_port
-  subnet_ids                = module.vpc.private_subnet_ids
-  security_group_ids        = [module.vpc.private_sg_id]
-  assign_public_ip          = false
-  enable_execute_command    = true
-  depends_on                = [module.ecr, module.vpc]
+  source = "./modules/ecs"
+
+  project_name            = var.project_name
+  region                  = var.region
+  private_subnet_ids      = module.vpc.private_subnet_ids
+  ecs_security_group_id   = aws_security_group.ecs_sg.id # or a resource you created
+  alb_listener_arn        = module.alb.https_listener_arn
+  ecr_repository_url      = module.ecr.repository_url
+  image_tag               = var.image_tag
+  container_name          = var.container_name
+  container_port          = var.container_port
+  target_group_arn        = module.alb.target_group_arn # <<–– important: ALB's TG ARN fed to ECS
+  desired_count           = var.desired_count
+  ecs_min_capacity        = var.ecs_min_capacity
+  ecs_max_capacity        = var.ecs_max_capacity
+  cpu_target_value        = var.cpu_target_value
+  log_retention_in_days   = var.log_retention_in_days
+  environment_variables   = var.environment_variables
+  container_secrets       = var.container_secrets
+  alb_listener_depends_on = [module.alb.alb_listener_arn] # if you want to force order, but prefer module references
+  tags                    = var.tags
 }
 
 ###########################################################
@@ -92,43 +84,71 @@ module "ecs" {
 ###########################################################
 
 module "rds" {
-  source                  = "./modules/rds"
-  project_name            = var.project_name
-  environment             = var.environment
-  db_engine               = var.db_engine
-  db_engine_version       = var.db_engine_version
-  db_instance_class       = var.db_instance_class
-  db_name                 = var.db_name
-  db_username             = var.db_username
-  db_password             = var.db_password
+  source = "./modules/rds"
+
+  db_identifier  = "${var.project_name}-db"
+  engine         = var.engine
+  engine_version = var.engine_version
+  instance_class = var.instance_class
+
+  db_name     = var.db_name
+  db_username = var.db_username
+  db_password = var.db_password
+
   subnet_ids              = module.vpc.private_subnet_ids
-  vpc_security_group_ids  = [module.vpc.private_sg_id]
-  multi_az                = true
-  allocated_storage       = 20
-  max_allocated_storage   = 100
-  publicly_accessible     = false
-  backup_retention_period = 7
-  deletion_protection     = true
-  depends_on              = [module.vpc]
+  security_group_ids      = module.alb.security_group_ids
+  allocated_storage       = var.allocated_storage
+  max_allocated_storage   = var.max_allocated_storage
+  multi_az                = var.multi_az
+  backup_retention_period = var.backup_retention_period
+  deletion_protection     = var.deletion_protection
+  skip_final_snapshot     = var.skip_final_snapshot
+
+  monitoring_interval     = var.monitoring_interval
+  cloudwatch_logs_exports = var.cloudwatch_logs_exports
+
+  maintenance_window = var.maintenance_window
+  backup_window      = var.backup_window
+
+  kms_key_arn = var.kms_key_arn
+
+  tags = {
+    Project     = var.project_name
+    Environment = var.environment
+  }
+
+  depends_on = [module.vpc]
 }
 
 ###########################################################
 # MODULE: ALB
+# (module expects: vpc_id, subnet_ids, security_group_ids, target_group_name, ecs_target_group_arn, certificate_arn, project_name, environment)
 ###########################################################
-
 module "alb" {
-  source                  = "./modules/alb"
-  project_name            = var.project_name
-  environment             = var.environment
-  alb_name                = "${var.project_name}-${var.environment}-alb"
-  vpc_id                  = module.vpc.vpc_id
-  subnet_ids              = module.vpc.public_subnet_ids
-  security_group_ids      = [module.vpc.public_sg_id]
-  target_group_port       = var.container_port
-  health_check_path       = "/"
-  listener_port           = 80
-  ecs_target_group_arn    = module.ecs.target_group_arn
-  depends_on              = [module.vpc, module.ecs]
+  source = "./modules/alb"
+
+  project_name          = var.project_name
+  alb_name              = "${var.project_name}-${var.environment}-alb"
+  alb_internal          = false
+  subnet_ids            = module.vpc.public_subnet_ids
+  vpc_id                = module.vpc.vpc_id
+  security_group_ids    = []
+  ssl_policy            = ""
+  listener_port         = 80
+  listener_protocol     = "HTTP"
+
+  target_group_name     = "${var.project_name}-${var.environment}-tg"
+  target_group_port     = 80
+  target_group_protocol = "HTTP"
+  target_type           = "ip"
+
+  health_check_healthy_threshold     = 3
+  health_check_unhealthy_threshold   = 3
+  health_check_timeout               = 5
+  health_check_interval              = 30
+
+  certificate_arn       = ""
+  tags                  = var.tags
 }
 
 ###########################################################
@@ -136,32 +156,105 @@ module "alb" {
 ###########################################################
 
 module "s3_cloudfront" {
-  source                  = "./modules/s3_cloudfront"
-  project_name            = var.project_name
-  environment             = var.environment
-  s3_bucket_name          = "${var.project_name}-${var.environment}-static"
-  enable_versioning       = true
-  enable_logging          = true
-  index_document          = "index.html"
-  error_document          = "error.html"
-  allowed_methods         = ["GET", "HEAD"]
-  cached_methods          = ["GET", "HEAD"]
-  price_class             = "PriceClass_100"
-  waf_acl_arn             = module.waf.waf_acl_arn
-  depends_on              = [module.waf]
+  source = "./modules/s3_cloudfront"
+
+  bucket_name         = var.bucket_name
+  acm_certificate_arn = ""
+  logging_bucket      = var.logging_bucket
+
+  force_destroy       = var.force_destroy
+  enable_versioning   = var.enable_versioning
+  sse_algorithm       = var.sse_algorithm
+  default_root_object = var.default_root_object
+  price_class         = var.price_class
+  tags                = var.tags
 }
 
 ###########################################################
 # MODULE: WAF
+# (module expects cloudfront_comment and waf_managed_rule_sets per your earlier module variables)
 ###########################################################
 
 module "waf" {
-  source           = "./modules/waf"
-  project_name     = var.project_name
-  environment      = var.environment
-  scope            = "CLOUDFRONT"
-  common_rule_set  = true
-  geo_restriction  = ["IN", "US"]
+  source = "./modules/waf"
+
+  create_alb_association = true
+  alb_arn                = module.alb.alb_arn
+  project_name           = var.project_name
+  environment            = var.environment
+  scope                  = var.scope
+  waf_managed_rule_sets  = var.waf_managed_rule_sets
+  depends_on             = [module.alb]
+
+  # module required cloudfront_comment per your module variables
+  cloudfront_comment = var.cloudfront_comment
+}
+
+###########################################################
+# MODULE: Route53
+###########################################################
+
+
+# source = "./modules/route53"
+ # enabled = false
+  #domain_name        = var.domain_name
+  #create_hosted_zone = false
+  #hosted_zone_id     = var.hosted_zone_id
+
+  #create_alb_record = var.hosted_zone_id != ""
+  #record_name       = var.record_name
+  #record_type       = var.record_type
+
+  # use ALB module outputs (adjust names if your alb module uses different output attributes)
+  #alb_dns_name = module.alb.alb_dns_name
+  #alb_zone_id  = module.alb.alb_zone_id
+
+  #create_cloudfront_record  = var.hosted_zone_id != ""
+  #cloudfront_domain_name    = module.s3_cloudfront.cloudfront_domain
+  #cloudfront_hosted_zone_id = module.s3_cloudfront.cloudfront_hosted_zone_id
+
+  #enable_wildcard     = true
+  #enable_health_check = true
+  #health_check_domain = "api.${var.domain_name}"
+
+  #tags = var.tags
+
+
+###########################################################
+# MODULE: DynamoDB (State Lock Table)
+###########################################################
+
+module "dynamodb_backend" {
+  source = "./modules/dynamodb"
+
+  dynamodb_table_name = "terraform-locks-${var.environment}"
+  tags                = var.tags
+}
+
+###########################################################
+# SECURITY GROUP: RDS
+###########################################################
+
+resource "aws_security_group" "rds_sg" {
+  name        = "${var.project_name}-rds-sg"
+  description = "Security group for RDS"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # tighten in production
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = var.tags
 }
 
 ###########################################################
@@ -173,21 +266,42 @@ output "vpc_id" {
 }
 
 output "alb_dns_name" {
-  value = module.alb.alb_dns_name
+  value = try(module.alb.alb_dns_name, module.alb.dns_name, "")
 }
 
 output "rds_endpoint" {
-  value = module.rds.db_endpoint
+  value = try(module.rds.db_endpoint, module.rds.endpoint, "")
 }
 
 output "ecs_cluster_name" {
-  value = module.ecs.cluster_name
+  value = try(module.ecs.cluster_name, module.ecs.cluster, "")
 }
 
 output "ecr_repo_url" {
-  value = module.ecr.repository_url
+  value = try(module.ecr.repository_url, module.ecr.repo_url, "")
 }
 
 output "cloudfront_domain" {
-  value = module.s3_cloudfront.cloudfront_domain
+  value = try(module.s3_cloudfront.cloudfront_domain, module.s3_cloudfront.domain_name, "")
+}
+
+resource "aws_security_group" "ecs_sg" {
+  name        = "ecs-sg"
+  description = "Security group for ECS tasks"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    description = "Allow traffic from ALB"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # or module.alb.alb_sg_cidr if needed
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }

@@ -83,7 +83,7 @@ resource "aws_cloudfront_distribution" "this" {
   comment             = "CloudFront distribution for ${var.bucket_name}"
   default_root_object = var.default_root_object
 
-  origins {
+  origin {
     domain_name              = aws_s3_bucket.this.bucket_regional_domain_name
     origin_id                = "s3-origin"
     origin_access_control_id = aws_cloudfront_origin_access_control.this.id
@@ -117,10 +117,12 @@ resource "aws_cloudfront_distribution" "this" {
   }
 
   viewer_certificate {
-    acm_certificate_arn      = var.acm_certificate_arn
-    ssl_support_method        = "sni-only"
-    minimum_protocol_version  = "TLSv1.2_2021"
-  }
+  cloudfront_default_certificate = var.acm_certificate_arn == "" ? true : false
+  acm_certificate_arn            = var.acm_certificate_arn == "" ? null : var.acm_certificate_arn
+  ssl_support_method             = var.acm_certificate_arn == "" ? null : "sni-only"
+  minimum_protocol_version       = var.acm_certificate_arn == "" ? null : "TLSv1.2_2021"
+}
+
 
   logging_config {
     include_cookies = false

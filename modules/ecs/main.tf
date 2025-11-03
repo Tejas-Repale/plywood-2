@@ -7,9 +7,6 @@ terraform {
   }
 }
 
-# -------------------------------
-# ECS Cluster
-# -------------------------------
 resource "aws_ecs_cluster" "this" {
   name = "${var.project_name}-ecs-cluster"
 
@@ -23,9 +20,6 @@ resource "aws_ecs_cluster" "this" {
   })
 }
 
-# -------------------------------
-# CloudWatch Log Group
-# -------------------------------
 resource "aws_cloudwatch_log_group" "this" {
   name              = "/ecs/${var.project_name}"
   retention_in_days = var.log_retention_in_days
@@ -35,9 +29,6 @@ resource "aws_cloudwatch_log_group" "this" {
   })
 }
 
-# -------------------------------
-# Task Execution IAM Role
-# -------------------------------
 resource "aws_iam_role" "execution_role" {
   name = "${var.project_name}-ecs-execution-role"
 
@@ -60,9 +51,6 @@ resource "aws_iam_role_policy_attachment" "execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# -------------------------------
-# ECS Task Role (Application Role)
-# -------------------------------
 resource "aws_iam_role" "task_role" {
   name = "${var.project_name}-ecs-task-role"
 
@@ -80,7 +68,6 @@ resource "aws_iam_role" "task_role" {
   })
 }
 
-# Example: allow RDS access, Secrets Manager, S3 read
 resource "aws_iam_role_policy" "task_role_policy" {
   name = "${var.project_name}-ecs-task-policy"
   role = aws_iam_role.task_role.id
@@ -102,54 +89,46 @@ resource "aws_iam_role_policy" "task_role_policy" {
   })
 }
 
-# -------------------------------
-# ECS Task Definition
-# -------------------------------
 resource "aws_ecs_task_definition" "this" {
   family                   = "${var.project_name}-task"
-  network_mode              = "awsvpc"
-  requires_compatibilities  = ["FARGATE"]
-  cpu                       = var.task_cpu
-  memory                    = var.task_memory
-  execution_role_arn        = aws_iam_role.execution_role.arn
-  task_role_arn             = aws_iam_role.task_role.arn
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.task_cpu
+  memory                   = var.task_memory
+  execution_role_arn       = aws_iam_role.execution_role.arn
+  task_role_arn            = aws_iam_role.task_role.arn
 
-  container_definitions = jsonencode([
-    {
-      name      = var.container_name
-      image     = "${var.ecr_repository_url}:${var.image_tag}"
-      essential = true
-      portMappings = [{
-        containerPort = var.container_port
-        hostPort      = var.container_port
-        protocol      = "tcp"
-      }]
-      environment = var.environment_variables
-      secrets = [
-        for secret in var.container_secrets : {
-          name      = secret.name
-          valueFrom = secret.value_from
-        }
-      ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.this.name
-          awslogs-region        = var.region
-          awslogs-stream-prefix = "ecs"
-        }
+  container_definitions = jsonencode([{
+    name      = var.container_name
+    image     = "${var.ecr_repository_url}:${var.image_tag}"
+    essential = true
+    portMappings = [{
+      containerPort = var.container_port
+      hostPort      = var.container_port
+      protocol      = "tcp"
+    }]
+    environment = var.environment_variables
+    secrets = [
+      for secret in var.container_secrets : {
+        name      = secret.name
+        valueFrom = secret.value_from
+      }
+    ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.this.name
+        awslogs-region        = var.region
+        awslogs-stream-prefix = "ecs"
       }
     }
-  ])
+  }])
 
   tags = merge(var.tags, {
     Name = "${var.project_name}-task"
   })
 }
 
-# -------------------------------
-# ECS Service
-# -------------------------------
 resource "aws_ecs_service" "this" {
   name            = "${var.project_name}-service"
   cluster         = aws_ecs_cluster.this.id
@@ -181,9 +160,6 @@ resource "aws_ecs_service" "this" {
   })
 }
 
-# -------------------------------
-# Autoscaling for ECS Service
-# -------------------------------
 resource "aws_appautoscaling_target" "ecs_target" {
   max_capacity       = var.ecs_max_capacity
   min_capacity       = var.ecs_min_capacity

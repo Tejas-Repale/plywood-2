@@ -1,296 +1,301 @@
-###########################################################
-# GLOBAL VARIABLES (COMMON ACROSS ALL MODULES)
-###########################################################
-
-variable "project_name" {
-  description = "The name of the project or application."
-  type        = string
-}
-
-variable "environment" {
-  description = "Deployment environment (e.g. dev, staging, prod)."
-  type        = string
-  default     = "dev"
+variable "aws_profile" {
+  type    = string
+  default = ""
 }
 
 variable "region" {
-  description = "AWS region for resource deployment."
-  type        = string
-  default     = "ap-south-1"
+  type    = string
+  default = "ap-south-1"
 }
 
-variable "aws_profile" {
-  description = "AWS CLI profile name for authentication."
-  type        = string
-  default     = "default"
+variable "project_name" {
+  type = string
 }
 
-variable "owner" {
-  description = "Owner or responsible team for the infrastructure."
-  type        = string
-  default     = "DevOpsTeam"
+variable "environment" {
+  type = string
 }
 
-variable "cost_center" {
-  description = "Tag to track resource cost allocation."
-  type        = string
-  default     = "Finance-001"
-}
-
-###########################################################
-# BACKEND CONFIGURATION VARIABLES
-###########################################################
-
-variable "backend_bucket_name" {
-  description = "S3 bucket name to store Terraform remote state."
-  type        = string
-}
-
-variable "backend_dynamodb_table" {
-  description = "DynamoDB table name for Terraform state locking."
-  type        = string
-}
-
-###########################################################
-# VPC MODULE VARIABLES
-###########################################################
-
+# VPC
 variable "vpc_cidr" {
-  description = "CIDR block for the VPC."
-  type        = string
-  default     = "10.0.0.0/16"
+  type = string
 }
 
-variable "public_subnets" {
-  description = "List of public subnet CIDRs across AZs."
-  type        = list(string)
-  default     = ["10.0.1.0/24", "10.0.2.0/24"]
+variable "public_subnet_cidrs" {
+  type = list(string)
 }
 
-variable "private_subnets" {
-  description = "List of private subnet CIDRs across AZs."
-  type        = list(string)
-  default     = ["10.0.3.0/24", "10.0.4.0/24"]
+variable "private_subnet_cidrs" {
+  type = list(string)
 }
 
 variable "availability_zones" {
-  description = "List of availability zones for subnets."
-  type        = list(string)
-  default     = ["ap-south-1a", "ap-south-1b"]
+  type = list(string)
 }
 
-###########################################################
-# ALB MODULE VARIABLES
-###########################################################
-
-variable "alb_name" {
-  description = "Name for the Application Load Balancer."
-  type        = string
-  default     = "app-alb"
+variable "enable_nat_gateway" {
+  type = bool
 }
 
-variable "alb_listener_port" {
-  description = "Listener port for the ALB."
-  type        = number
-  default     = 80
+variable "repository_name" {
+  type = string
 }
 
-variable "alb_internal" {
-  description = "Whether the ALB is internal (true) or internet-facing (false)."
-  type        = bool
-  default     = false
-}
-
-variable "alb_target_port" {
-  description = "Port on which the target (ECS container) listens."
-  type        = number
-  default     = 8080
-}
-
-###########################################################
-# ECS MODULE VARIABLES
-###########################################################
-
-variable "ecs_cluster_name" {
-  description = "Name of the ECS cluster."
-  type        = string
-  default     = "ecs-cluster"
-}
-
-variable "ecs_service_name" {
-  description = "Name of the ECS service."
-  type        = string
-  default     = "ecs-service"
-}
-
-variable "ecs_task_cpu" {
-  description = "CPU units for the ECS task definition."
-  type        = number
-  default     = 256
-}
-
-variable "ecs_task_memory" {
-  description = "Memory (MiB) for the ECS task definition."
-  type        = number
-  default     = 512
-}
-
-variable "ecs_desired_count" {
-  description = "Number of desired ECS tasks."
-  type        = number
-  default     = 2
-}
-
-variable "ecs_image_url" {
-  description = "ECR image URI for ECS deployment."
-  type        = string
-  default     = ""
-}
-
-variable "ecs_container_port" {
-  description = "Container port for the ECS service."
-  type        = number
-  default     = 8080
-}
-
-variable "ecs_launch_type" {
-  description = "Launch type for ECS service (EC2 or FARGATE)."
-  type        = string
-  default     = "FARGATE"
-}
-
-variable "ecs_execution_role_name" {
-  description = "IAM role name for ECS task execution."
-  type        = string
-  default     = "ecsTaskExecutionRole"
-}
-
-###########################################################
-# ECR MODULE VARIABLES
-###########################################################
-
+# ECR
 variable "ecr_repo_name" {
-  description = "ECR repository name to store Docker images."
-  type        = string
-  default     = "app-repo"
+  type = string
 }
 
-variable "ecr_image_tag_mutability" {
-  description = "Image tag mutability setting (MUTABLE/IMMUTABLE)."
-  type        = string
-  default     = "IMMUTABLE"
+# ECS
+variable "image_tag" {
+  type = string
 }
 
-variable "ecr_scan_on_push" {
-  description = "Enable image scan on push."
-  type        = bool
-  default     = true
+variable "container_name" {
+  type = string
 }
 
-###########################################################
-# RDS MODULE VARIABLES
-###########################################################
-
-variable "rds_identifier" {
-  description = "Identifier name for RDS instance."
-  type        = string
-  default     = "app-db"
+variable "container_port" {
+  type = number
 }
 
-variable "rds_engine" {
-  description = "Database engine for RDS (e.g., mysql, postgres)."
-  type        = string
-  default     = "mysql"
+variable "desired_count" {
+  type    = number
+  default = 2
 }
 
-variable "rds_engine_version" {
-  description = "Engine version for RDS."
-  type        = string
-  default     = "8.0.36"
+variable "ecs_min_capacity" {
+  type    = number
+  default = 2
 }
 
-variable "rds_instance_class" {
-  description = "Instance type for RDS."
-  type        = string
-  default     = "db.t3.micro"
+variable "ecs_max_capacity" {
+  type    = number
+  default = 5
 }
 
-variable "rds_username" {
-  description = "Master username for RDS."
-  type        = string
-  default     = "admin"
+variable "cpu_target_value" {
+  type    = number
+  default = 60
 }
 
-variable "rds_password" {
-  description = "Master password for RDS."
-  type        = string
-  sensitive   = true
+variable "log_retention_in_days" {
+  type    = number
+  default = 30
 }
 
-variable "rds_allocated_storage" {
-  description = "Allocated storage for RDS in GB."
-  type        = number
-  default     = 20
+variable "environment_variables" {
+  type = list(object({
+    name  = string
+    value = string
+  }))
+  default = []
 }
 
-variable "rds_multi_az" {
-  description = "Enable Multi-AZ for high availability."
-  type        = bool
-  default     = false
+variable "container_secrets" {
+  type = list(object({
+    name       = string
+    value_from = string
+  }))
+  default = []
 }
 
-###########################################################
-# S3 + CLOUDFRONT MODULE VARIABLES
-###########################################################
+# RDS
+variable "engine" {
+  type    = string
+  default = "mysql"
+}
 
-variable "s3_bucket_name" {
-  description = "S3 bucket name for static hosting."
-  type        = string
+variable "engine_version" {
+  type    = string
+  default = "8.0.36"
+}
+
+variable "instance_class" {
+  type    = string
+  default = "db.t3.medium"
+}
+
+variable "db_name" {
+  type = string
+}
+
+variable "db_username" {
+  type = string
+}
+
+variable "db_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "allocated_storage" {
+  type    = number
+  default = 20
+}
+
+variable "max_allocated_storage" {
+  type    = number
+  default = 100
+}
+
+variable "multi_az" {
+  type    = bool
+  default = true
+}
+
+variable "backup_retention_period" {
+  type    = number
+  default = 7
+}
+
+variable "deletion_protection" {
+  type    = bool
+  default = true
+}
+
+variable "skip_final_snapshot" {
+  type    = bool
+  default = false
+}
+
+variable "monitoring_interval" {
+  type    = number
+  default = 60
+}
+
+variable "cloudwatch_logs_exports" {
+  type    = list(string)
+  default = ["error", "general", "slowquery"]
+}
+
+variable "maintenance_window" {
+  type    = string
+  default = "Mon:00:00-Mon:03:00"
+}
+
+variable "backup_window" {
+  type    = string
+  default = "03:00-06:00"
+}
+
+variable "kms_key_arn" {
+  type    = string
+  default = null
+}
+
+# ALB
+variable "alb_name" {
+  type = string
+}
+
+# S3/CloudFront
+variable "bucket_name" {
+  type = string
+}
+
+variable "acm_certificate_arn" {
+  type = string
+}
+
+variable "logging_bucket" {
+  type = string
+}
+
+variable "force_destroy" {
+  type    = bool
+  default = false
+}
+
+variable "enable_versioning" {
+  type    = bool
+  default = true
+}
+
+variable "sse_algorithm" {
+  type    = string
+  default = "AES256"
+}
+
+variable "default_root_object" {
+  type    = string
+  default = "index.html"
+}
+
+variable "price_class" {
+  type    = string
+  default = "PriceClass_100"
+}
+
+# WAF
+variable "scope" {
+  type    = string
+  default = "CLOUDFRONT"
+}
+
+variable "waf_managed_rule_sets" {
+  type    = list(string)
+  default = []
 }
 
 variable "cloudfront_comment" {
-  description = "Comment for CloudFront distribution."
-  type        = string
-  default     = "Static website distribution"
+  type    = string
+  default = ""
 }
 
-variable "enable_logging" {
-  description = "Enable CloudFront logging to S3."
-  type        = bool
-  default     = true
+# Route53
+variable "domain_name" {
+  type    = string
+  default = ""
 }
 
-###########################################################
-# WAF MODULE VARIABLES
-###########################################################
-
-variable "waf_scope" {
-  description = "Scope for WAF (REGIONAL for ALB or CLOUDFRONT for global)."
-  type        = string
-  default     = "REGIONAL"
+variable "hosted_zone_id" {
+  type    = string
+  default = ""
 }
 
-variable "associate_alb" {
-  description = "Whether to associate WAF with ALB."
-  type        = bool
-  default     = true
+# DynamoDB
+variable "dynamodb_table_name" {
+  type    = string
+  default = ""
 }
 
-variable "blocked_ip_addresses" {
-  description = "List of IP addresses to block using WAF."
-  type        = list(string)
-  default     = []
-}
-
-###########################################################
-# TAGGING VARIABLES
-###########################################################
-
+# Tags
 variable "tags" {
-  description = "Map of common tags for all resources."
-  type        = map(string)
-  default = {
-    ManagedBy = "Terraform"
-    Owner     = "DevOpsTeam"
-  }
+  type    = map(string)
+  default = {}
+}
+variable "aws_region" {
+  type = string
+}
+
+
+variable "certificate_arn" {
+  type        = string
+  description = "ACM certificate ARN for ALB HTTPS listener"
+  default     = null
+}
+
+variable "rds_password_secret_name" {
+  type = string
+}
+
+variable "rds_backup_retention" {
+  type = number
+}
+
+variable "enable_dns_support" {
+  type    = bool
+  default = true
+}
+
+variable "enable_dns_hostnames" {
+  type    = bool
+  default = true
+}
+
+variable "ssl_policy" {
+  description = "SSL policy for HTTPS listener"
+  type        = string
+  default     = "ELBSecurityPolicy-2016-08"
 }

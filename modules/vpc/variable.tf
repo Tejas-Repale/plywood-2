@@ -1,30 +1,32 @@
-variable "project_name" {
-  description = "Project or environment name prefix"
-  type        = string
+variable "project_name" {}
+variable "tags" {
+  type = map(string)
 }
 
-variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
-  type        = string
-}
-
-variable "availability_zones" {
-  description = "List of Availability Zones"
-  type        = list(string)
-}
-
+variable "vpc_cidr" {}
 variable "public_subnet_cidrs" {
-  description = "List of CIDR blocks for public subnets"
-  type        = list(string)
+  type = list(string)
 }
 
 variable "private_subnet_cidrs" {
-  description = "List of CIDR blocks for private subnets"
-  type        = list(string)
+  type = list(string)
 }
 
-variable "tags" {
-  description = "Common tags for all resources"
-  type        = map(string)
-  default     = {}
+variable "azs" {
+  type = list(string)
+}
+
+variable "enable_nat_gateway" {
+  type    = bool
+  default = true
+}
+
+variable "enable_dns_support" {
+  type    = bool
+  default = true
+}
+
+variable "enable_dns_hostnames" {
+  type    = bool
+  default = true
 }

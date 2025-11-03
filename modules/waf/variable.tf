@@ -32,3 +32,39 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "environment" {
+  type = string
+}
+
+variable "scope" {
+  type = string
+}
+
+variable "common_rule_set" {
+  type    = bool
+  default = true
+}
+
+variable "geo_restriction" {
+  type    = list(string)
+  default = []
+}
+
+variable "cloudfront_comment" {
+  type = string
+}
+
+variable "waf_managed_rule_sets" {
+  type = list(string)
+}
+
+variable "create_alb_association" {
+  type    = bool
+  default = false
+}
+
+variable "alb_arn" {
+  type    = string
+  default = ""
+}

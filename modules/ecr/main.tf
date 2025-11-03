@@ -31,9 +31,16 @@ resource "aws_ecr_repository" "this" {
     var.tags
   )
 
-  lifecycle {
-    prevent_destroy = var.prevent_destroy
-  }
+ lifecycle {
+  prevent_destroy = false
+
+   ignore_changes = [
+    name,
+    encryption_configuration,
+    image_tag_mutability,
+    tags,
+  ]
+}
 }
 
 # ------------------------------------------------------------------------------
