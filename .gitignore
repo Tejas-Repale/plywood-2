@@ -1,5 +1,8 @@
  .terraform
  .terraform.lock.hcl
- .git 
+ .git
+ .tfstate
+ .log
+ .tfstate.backup 
   plan.out
  
