@@ -49,11 +49,12 @@ jobs:
       # =======================
       # 3️⃣ Configure AWS Credentials (OIDC)
       # =======================
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+      -  name: Configure AWS credentials (OIDC)
+         uses: aws-actions/configure-aws-credentials@v4
+         with:
+           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+           aws-region: ${{ secrets.AWS_REGION }}
+           role-session-name: github-oidc-session
 
       # =======================
       # 4️⃣ Terraform Init
@@ -140,3 +141,4 @@ jobs:
             --service ${{ secrets.ECS_SERVICE_NAME }} \
             --force-new-deployment \
             --region ${{ env.AWS_REGION }}
+
