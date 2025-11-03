@@ -3,3 +3,9 @@
 *.tfstate
 *.tfstate.backup
 plan.out
+.terraform/
+*.tfstate
+*.tfstate
+*.tfstate
+*.tfstate
+.terraform.lock.hcl
