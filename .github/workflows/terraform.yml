@@ -69,28 +69,29 @@ jobs:
           -backend-config="dynamodb_table=${{ secrets.TF_BACKEND_DYNAMODB }}" \
           -reconfigure
 
-      # =======================
-      # 5️⃣ Terraform Validate
-      # =======================
-      - name: Terraform Validate
-        working-directory: ${{ env.TERRAFORM_DIR }}
-        run: terraform validate
+     # =======================
+     # 5️⃣ Terraform Validate
+     # =======================
+      -  name: Terraform Validate
+         working-directory: .
+         run: terraform validate
 
       # =======================
       # 6️⃣ Terraform Plan
       # =======================
       - name: Terraform Plan
-        working-directory: ${{ env.TERRAFORM_DIR }}
+        working-directory: .
         run: terraform plan -var-file="terraform.tfvars" -input=false
         continue-on-error: true
 
-      # =======================
-      # 7️⃣ Terraform Apply (Manual Approval)
-      # =======================
+     # =======================
+     # 7️⃣ Terraform Apply (Manual Approval)
+     # =======================
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
-        working-directory: ${{ env.TERRAFORM_DIR }}
+        working-directory: .
         run: terraform apply -auto-approve -var-file="terraform.tfvars"
+
 
   docker-deploy:
     name: Build & Push Docker to ECR
@@ -141,5 +142,6 @@ jobs:
             --service ${{ secrets.ECS_SERVICE_NAME }} \
             --force-new-deployment \
             --region ${{ env.AWS_REGION }}
+
 
 
