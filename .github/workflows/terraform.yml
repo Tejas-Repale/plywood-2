@@ -54,14 +54,14 @@ jobs:
 
       # ✅ FIXED: Correct working directory
       - name: Terraform Init
-        working-directory: ${{ env.TERRAFORM_DIR }}
+        working-directory: .
         run: |
           terraform init \
-            -backend-config="bucket=${{ secrets.TF_BACKEND_BUCKET }}" \
-            -backend-config="key=${{ github.ref_name }}/terraform.tfstate" \
-            -backend-config="region=${{ env.AWS_REGION }}" \
-            -backend-config="dynamodb_table=${{ secrets.TF_BACKEND_DYNAMODB }}" \
-            -reconfigure
+          -backend-config="bucket=${{ secrets.TF_BACKEND_BUCKET }}" \
+          -backend-config="key=${{ github.ref_name }}/terraform.tfstate" \
+          -backend-config="region=${{ env.AWS_REGION }}" \
+          -backend-config="dynamodb_table=${{ secrets.TF_BACKEND_DYNAMODB }}" \
+          -reconfigure 
 
       - name: Terraform Validate
         working-directory: ${{ env.TERRAFORM_DIR }}
@@ -111,3 +111,4 @@ jobs:
             --service ${{ secrets.ECS_SERVICE_NAME }} \
             --force-new-deployment \
             --region ${{ env.AWS_REGION }}
+
