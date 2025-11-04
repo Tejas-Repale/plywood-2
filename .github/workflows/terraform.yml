@@ -64,18 +64,19 @@ jobs:
           -reconfigure 
 
       - name: Terraform Validate
-        working-directory: ${{ env.TERRAFORM_DIR }}
+        working-directory: .
         run: terraform validate
-
+        
       - name: Terraform Plan
-        working-directory: ${{ env.TERRAFORM_DIR }}
+        working-directory: .
         run: terraform plan -var-file="terraform.tfvars" -input=false
         continue-on-error: true
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
-        working-directory: ${{ env.TERRAFORM_DIR }}
+        working-directory: .
         run: terraform apply -auto-approve -var-file="terraform.tfvars"
+ 
 
   docker-deploy:
     name: Build & Push Docker to ECR
@@ -111,4 +112,5 @@ jobs:
             --service ${{ secrets.ECS_SERVICE_NAME }} \
             --force-new-deployment \
             --region ${{ env.AWS_REGION }}
+
 
