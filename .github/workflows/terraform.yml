@@ -22,6 +22,11 @@ permissions:
   contents: read
   id-token: write
 
+# ✅ Prevent multiple parallel runs → fixes DynamoDB lock forever
+concurrency:
+  group: terraform-${{ github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   terraform:
     name: Terraform Deploy
@@ -31,67 +36,46 @@ jobs:
       name: ${{ github.ref_name }}
 
     steps:
-      # =======================
-      # 1️⃣ Checkout Repository
-      # =======================
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # =======================
-      # 2️⃣ Setup Terraform
-      # =======================
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
-          cli_config_credentials_token: ${{ secrets.GITHUB_TOKEN }}
 
-      # =======================
-      # 3️⃣ Configure AWS Credentials (OIDC)
-      # =======================
-      -  name: Configure AWS credentials (OIDC)
-         uses: aws-actions/configure-aws-credentials@v4
-         with:
-           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-           aws-region: ${{ secrets.AWS_REGION }}
-           role-session-name: github-oidc-session
+      # ✅ Correct AWS OIDC
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-oidc-session
 
-      # =======================
-      # 4️⃣ Terraform Init
-      # =======================
+      # ✅ FIXED: Correct working directory
       - name: Terraform Init
-        working-directory: .
+        working-directory: ${{ env.TERRAFORM_DIR }}
         run: |
           terraform init \
-          -backend-config="bucket=${{ secrets.TF_BACKEND_BUCKET }}" \
-          -backend-config="key=${{ github.ref_name }}/terraform.tfstate" \
-          -backend-config="region=${{ env.AWS_REGION }}" \
-          -backend-config="dynamodb_table=${{ secrets.TF_BACKEND_DYNAMODB }}" \
-          -reconfigure
+            -backend-config="bucket=${{ secrets.TF_BACKEND_BUCKET }}" \
+            -backend-config="key=${{ github.ref_name }}/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ secrets.TF_BACKEND_DYNAMODB }}" \
+            -reconfigure
 
-     # =======================
-     # 5️⃣ Terraform Validate
-     # =======================
-      -  name: Terraform Validate
-         working-directory: .
-         run: terraform validate
+      - name: Terraform Validate
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform validate
 
-      # =======================
-      # 6️⃣ Terraform Plan
-      # =======================
       - name: Terraform Plan
-        working-directory: .
+        working-directory: ${{ env.TERRAFORM_DIR }}
         run: terraform plan -var-file="terraform.tfvars" -input=false
         continue-on-error: true
 
-     # =======================
-     # 7️⃣ Terraform Apply (Manual Approval)
-     # =======================
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
-        working-directory: .
+        working-directory: ${{ env.TERRAFORM_DIR }}
         run: terraform apply -auto-approve -var-file="terraform.tfvars"
-
 
   docker-deploy:
     name: Build & Push Docker to ECR
@@ -101,40 +85,25 @@ jobs:
       name: ${{ github.ref_name }}
 
     steps:
-      # =======================
-      # 1️⃣ Checkout Code
-      # =======================
       - name: Checkout
         uses: actions/checkout@v4
 
-      # =======================
-      # 2️⃣ Configure AWS for ECR
-      # =======================
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ECR_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # =======================
-      # 3️⃣ Login to Amazon ECR
-      # =======================
       - name: Login to Amazon ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # =======================
-      # 4️⃣ Build & Push Image
-      # =======================
       - name: Build, Tag, and Push Docker Image
         run: |
           docker build -t ${{ env.APP_NAME }}:${{ env.IMAGE_TAG }} .
           docker tag ${{ env.APP_NAME }}:${{ env.IMAGE_TAG }} ${{ steps.ecr.outputs.registry }}/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}
           docker push ${{ steps.ecr.outputs.registry }}/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}
 
-      # =======================
-      # 5️⃣ Update ECS Service (Zero Downtime)
-      # =======================
       - name: Update ECS Service
         run: |
           aws ecs update-service \
@@ -142,6 +111,3 @@ jobs:
             --service ${{ secrets.ECS_SERVICE_NAME }} \
             --force-new-deployment \
             --region ${{ env.AWS_REGION }}
-
-
-
